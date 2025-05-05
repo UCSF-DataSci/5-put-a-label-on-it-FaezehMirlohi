@@ -5,3 +5,6 @@ data/
 demo*
 refs/
 results/
+env5/
+.DS_Store
+.github/tests/__pycache__/

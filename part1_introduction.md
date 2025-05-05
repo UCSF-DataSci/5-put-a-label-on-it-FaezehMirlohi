@@ -38,8 +38,9 @@ def load_data(file_path):
     """
     # YOUR CODE HERE
     # Load the CSV file using pandas
-    
-    return pd.DataFrame()  # Replace with actual implementation
+    df = pd.read_csv(file_path, parse_dates=["timestamp"])
+
+    return df
 ```
 
 ## 3. Data Preparation
@@ -60,13 +61,29 @@ def prepare_data_part1(df, test_size=0.2, random_state=42):
         X_train, X_test, y_train, y_test
     """
     # YOUR CODE HERE
+    # Dropping rows without target (disease_outcome) values
+    df = df.dropna(subset = ["disease_outcome"])
+
     # 1. Select relevant features (age, systolic_bp, diastolic_bp, glucose_level, bmi)
+    X = df[["age", "systolic_bp", "diastolic_bp", "glucose_level", "bmi"]]
+
     # 2. Select target variable (disease_outcome)
+    y = df[["disease_outcome"]]
+
     # 3. Split data into training and testing sets
-    # 4. Handle missing values using SimpleImputer
+    X_train, X_test, y_train, y_test = train_test_split(X,
+                                                        y,
+                                                        test_size = test_size,
+                                                        random_state = random_state,
+                                                        stratify = y)
     
+    # 4. Handle missing values using SimpleImputer
+    imputer = SimpleImputer(strategy='mean')
+    X_train =pd.DataFrame(imputer.fit_transform(X_train), columns = X.columns, index = X_train.index)
+    X_test = pd.DataFrame(imputer.transform(X_test), columns = X.columns, index = X_test.index)
+
     # Placeholder return - replace with your implementation
-    return None, None, None, None
+    return X_train, X_test, y_train, y_test
 ```
 
 ## 4. Model Training
@@ -87,8 +104,9 @@ def train_logistic_regression(X_train, y_train):
     """
     # YOUR CODE HERE
     # Initialize and train a LogisticRegression model
+    model = LogisticRegression().fit(X_train, y_train)
     
-    return None  # Replace with actual implementation
+    return model
 ```
 
 ## 5. Model Evaluation
@@ -110,12 +128,23 @@ def calculate_evaluation_metrics(model, X_test, y_test):
     """
     # YOUR CODE HERE
     # 1. Generate predictions
+    y_pred = model.predict(X_test)
+
     # 2. Calculate metrics: accuracy, precision, recall, f1, auc
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+
     # 3. Create confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+
     # 4. Return metrics in a dictionary
-    
+    metrics = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1, "auc": auc, "confusion_matrix": cm}
+
     # Placeholder return - replace with your implementation
-    return {}
+    return metrics
 ```
 
 ## 6. Save Results
@@ -124,10 +153,19 @@ Save the calculated metrics to a text file.
 
 ```python
 # Create results directory and save metrics
-# YOUR CODE HERE
-# 1. Create 'results' directory if it doesn't exist
-# 2. Format metrics as strings
-# 3. Write metrics to 'results/results_part1.txt'
+def save_results(metrics):
+    # 1. Create 'results' directory if it doesn't exist
+    os.makedirs("results", exist_ok = True)
+
+    # 2. Format metrics as strings
+    result_str = ""
+    for metric, value in metrics.items():
+        if metric != 'confusion_matrix':
+            result_str += f"{metric}: {value:.4f}\n"
+
+    # 3. Write metrics to 'results/results_part1.txt'
+    with open("results/results_part1.txt", "w") as f:
+        f.write(result_str)
 ```
 
 ## 7. Main Execution
@@ -156,7 +194,7 @@ if __name__ == "__main__":
             print(f"{metric}: {value:.4f}")
     
     # 6. Save results
-    # (Your code for saving results)
+    save_results(metrics)
     
     # 7. Interpret results
     interpretation = interpret_results(metrics)
@@ -186,13 +224,17 @@ def interpret_results(metrics):
     """
     # YOUR CODE HERE
     # 1. Determine which metric performed best and worst
+    best_metric = max(["accuracy", "precision", "recall", "f1", "auc"], key = lambda k: metrics[k])
+    worst_metric = min(["accuracy", "precision", "recall", "f1", "auc"], key = lambda k: metrics[k])
+
     # 2. Calculate an imbalance impact score based on the difference
     #    between accuracy and more imbalance-sensitive metrics like F1 or recall
-    # 3. Return the results as a dictionary
+    imbalance_impact_score = round(abs(metrics["accuracy"] - metrics["f1"]), 3)
     
-    # Placeholder return - replace with your implementation
+    # 3. Return the results as a dictionary
     return {
-        'best_metric': 'unknown',
-        'worst_metric': 'unknown',
-        'imbalance_impact_score': 0.0
+        'best_metric': best_metric,
+        'worst_metric': worst_metric,
+        'imbalance_impact_score': imbalance_impact_score
     }
+```
